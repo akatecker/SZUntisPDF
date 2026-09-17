@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SZUntisPDF – Stundenplan</title>
+<link rel="icon" href="logo.jpg">
+<link rel="stylesheet" href="stil.css">
+</head>
+<body>
+
+<!-- ===== Einrichtung ===== -->
+<section id="einrichtung" hidden>
+  <div class="karte">
+    <img src="logo.jpg" alt="Schulzentrum Ungargasse" class="logo">
+    <h1>Stundenplan einrichten</h1>
+    <p class="hinweis">
+      Der QR-Code steht in WebUntis unter <em>Profil&nbsp;→ Freigaben →
+      Zugriff über Untis Mobile</em>.
+    </p>
+
+    <div class="reiter" role="tablist">
+      <button role="tab" data-ziel="seite-kamera" class="aktiv">Kamera</button>
+      <button role="tab" data-ziel="seite-bild">Bild</button>
+      <button role="tab" data-ziel="seite-manuell">Manuell</button>
+    </div>
+
+    <div id="seite-kamera" class="seite aktiv">
+      <video id="video" playsinline muted></video>
+      <div class="reihe">
+        <select id="kamerawahl" hidden></select>
+        <button id="kamera-start" class="haupt">Kamera starten</button>
+      </div>
+    </div>
+
+    <div id="seite-bild" class="seite">
+      <label id="ablage" for="datei">
+        <span>Foto oder Screenshot hierher ziehen<br>oder klicken zum Auswählen</span>
+        <img id="vorschau" alt="" hidden>
+      </label>
+      <input type="file" id="datei" accept="image/*" hidden>
+    </div>
+
+    <div id="seite-manuell" class="seite">
+      <label>Url <input id="f-server" placeholder="z. B. szu.webuntis.com" autocomplete="off"></label>
+      <label>Schule <input id="f-schule" placeholder="z. B. szu" autocomplete="off"></label>
+      <label>Benutzer <input id="f-benutzer" placeholder="Vorname.Nachname" autocomplete="off"></label>
+      <label>Schlüssel <input id="f-schluessel" placeholder="16 Zeichen" autocomplete="off"></label>
+      <button id="manuell-ok" class="haupt">Verbinden</button>
+    </div>
+
+    <p id="meldung" class="meldung" hidden></p>
+  </div>
+</section>
+
+<!-- ===== Stundenplan ===== -->
+<section id="plan" hidden>
+  <header class="leiste">
+    <img src="logo.jpg" alt="" class="logo-klein">
+    <strong id="schueler"></strong>
+    <span class="dehnen"></span>
+    <select id="modus" title="Der persönliche Plan hat immer Vorrang"></select>
+    <button id="woche-zurueck" title="Vorige Woche">◀</button>
+    <span id="woche-text"></span>
+    <button id="woche-vor" title="Nächste Woche">▶</button>
+    <button id="woche-heute">Aktuelle Woche</button>
+    <button id="drucken" class="haupt" title="Druckdialog – dort auch „Als PDF sichern“">Drucken / PDF</button>
+    <button id="konto-wechseln" title="Anderes Konto einrichten">Konto</button>
+  </header>
+
+  <div id="druckkopf">
+    <img src="logo.jpg" alt="">
+    <div>
+      <strong id="druck-name"></strong>
+      <span id="druck-woche"></span>
+    </div>
+  </div>
+
+  <div id="raster"></div>
+  <p id="fusszeile"></p>
+</section>
+
+<div id="laden" hidden><span></span>Stundenplan wird geladen …</div>
+
+<script src="jsqr.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

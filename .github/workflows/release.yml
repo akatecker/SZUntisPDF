@@ -1,0 +1,77 @@
+name: Programme bauen
+
+# Baut aus demselben Quellstand je eine eigenstaendige Datei fuer macOS
+# (Apple Silicon und Intel) sowie Windows. Laeuft bei jedem Push auf main,
+# auf Zuruf, und legt bei einem Versions-Tag zusaetzlich ein Release an.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bauen:
+    name: ${{ matrix.bezeichnung }}
+    runs-on: ${{ matrix.laufer }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - laufer: macos-14
+            bezeichnung: macOS (Apple Silicon)
+            kennung: macos-arm64
+            datei: SZUntisPDF
+          - laufer: macos-13
+            bezeichnung: macOS (Intel)
+            kennung: macos-intel
+            datei: SZUntisPDF
+          - laufer: windows-latest
+            bezeichnung: Windows
+            kennung: windows-x64
+            datei: SZUntisPDF.exe
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: PyInstaller installieren
+        run: python -m pip install --upgrade pip pyinstaller
+
+      - name: Bauen
+        run: pyinstaller --noconfirm --clean SZUntisPDF.spec
+
+      - name: Kurztest (startet und antwortet?)
+        shell: bash
+        run: python werkzeuge/rauchtest.py "dist/${{ matrix.datei }}"
+
+      - name: Größe ausweisen
+        shell: bash
+        run: ls -l "dist/${{ matrix.datei }}" | awk '{printf "%.1f MB\n", $5/1048576}'
+
+      - name: Paket schnüren
+        shell: bash
+        run: |
+          mkdir -p paket
+          cp "dist/${{ matrix.datei }}" paket/
+          cp ANLEITUNG.md paket/
+          cd paket && zip -r "../SZUntisPDF-${{ matrix.kennung }}.zip" .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SZUntisPDF-${{ matrix.kennung }}
+          path: SZUntisPDF-${{ matrix.kennung }}.zip
+          retention-days: 90
+
+      - name: Release bestücken
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: SZUntisPDF-${{ matrix.kennung }}.zip
+          generate_release_notes: true

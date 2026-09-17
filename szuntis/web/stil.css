@@ -1,0 +1,244 @@
+/* SZUntisPDF - Bildschirm- und Druckansicht.
+   Das Wochenraster ist bewusst dieselbe Auszeichnung fuer beide: Was am
+   Bildschirm steht, kommt auch aufs Papier bzw. ins PDF. */
+
+:root {
+  --grund: #ffffff;
+  --flaeche: #f5f6f8;
+  --linie: #d8dce0;
+  --linie-fein: #eceef1;
+  --text: #1c2226;
+  --gedimmt: #667079;
+  --akzent: #1f618d;
+  --entfaellt: #b03a2e;
+  --entfaellt-flaeche: #fbeeec;
+  --besonders: #a96a0b;
+  --heute: #e8f0fe;
+}
+
+* { box-sizing: border-box; }
+
+/* Muss vor den ID-Regeln stehen und diese schlagen: sonst gewinnt
+   "#einrichtung { display: flex }" gegen das hidden-Attribut. */
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  font: 14px/1.45 -apple-system, "Segoe UI", system-ui, sans-serif;
+  color: var(--text);
+  background: var(--flaeche);
+}
+
+button, select, input { font: inherit; }
+
+button {
+  padding: 6px 12px;
+  border: 1px solid var(--linie);
+  border-radius: 6px;
+  background: var(--grund);
+  cursor: pointer;
+}
+button:hover { background: var(--flaeche); }
+button.haupt { background: var(--akzent); border-color: var(--akzent); color: #fff; }
+button.haupt:hover { filter: brightness(1.1); }
+button:disabled { opacity: .5; cursor: default; }
+
+/* ===== Einrichtung ===== */
+
+#einrichtung {
+  display: flex;
+  justify-content: center;
+  padding: 32px 16px;
+}
+
+.karte {
+  width: min(560px, 100%);
+  background: var(--grund);
+  border: 1px solid var(--linie);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.logo { display: block; width: 260px; max-width: 100%; margin: 0 auto 18px; }
+.karte h1 { margin: 0 0 6px; font-size: 20px; text-align: center; }
+.hinweis { margin: 0 0 18px; color: var(--gedimmt); text-align: center; font-size: 13px; }
+.hinweis em { font-style: normal; font-weight: 600; }
+
+.reiter { display: flex; gap: 4px; margin-bottom: 16px; }
+.reiter button { flex: 1; border-radius: 6px 6px 0 0; }
+.reiter button.aktiv { background: var(--akzent); border-color: var(--akzent); color: #fff; }
+
+.seite { display: none; }
+.seite.aktiv { display: block; }
+.reihe { display: flex; gap: 8px; margin-top: 10px; }
+.reihe > * { flex: 1; }
+
+#video {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #111;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+#ablage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+  padding: 12px;
+  border: 2px dashed var(--linie);
+  border-radius: 8px;
+  color: var(--gedimmt);
+  text-align: center;
+  cursor: pointer;
+}
+#ablage.bereit { border-color: var(--akzent); background: var(--heute); }
+#vorschau { max-width: 100%; max-height: 320px; border-radius: 6px; }
+
+#seite-manuell label { display: block; margin-bottom: 10px; font-size: 13px; color: var(--gedimmt); }
+#seite-manuell input {
+  display: block;
+  width: 100%;
+  margin-top: 3px;
+  padding: 7px 9px;
+  border: 1px solid var(--linie);
+  border-radius: 6px;
+  color: var(--text);
+}
+#manuell-ok { width: 100%; margin-top: 4px; }
+
+.meldung {
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--flaeche);
+  border-left: 3px solid var(--gedimmt);
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+.meldung.gut { border-left-color: #1e8449; }
+.meldung.schlecht { border-left-color: var(--entfaellt); }
+
+/* ===== Stundenplan ===== */
+
+.leiste {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  background: var(--grund);
+  border-bottom: 1px solid var(--linie);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.logo-klein { height: 26px; }
+.dehnen { flex: 1; }
+#woche-text { min-width: 168px; text-align: center; color: var(--gedimmt); }
+#modus { padding: 6px 8px; border: 1px solid var(--linie); border-radius: 6px; background: var(--grund); }
+
+#druckkopf { display: none; }
+
+#raster {
+  display: grid;
+  gap: 0;
+  margin: 14px;
+  background: var(--grund);
+  border: 1px solid var(--linie);
+  border-radius: 8px;
+  overflow: hidden;
+  /* Feste Hoehe noetig: Die Terminbloecke liegen prozentual in der Tagesspalte,
+     ohne Hoehe des Rasters faellt alles auf null zusammen. */
+  height: calc(100vh - 128px);
+  min-height: 460px;
+}
+
+.spaltenkopf {
+  padding: 7px 4px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--gedimmt);
+  border-bottom: 1px solid var(--linie);
+  border-left: 1px solid var(--linie-fein);
+}
+.spaltenkopf.heute { background: var(--heute); color: var(--text); }
+.spaltenkopf.zeitspalte { border-left: 0; }
+
+.zeitachse { position: relative; border-right: 1px solid var(--linie); }
+.uhrzeit {
+  position: absolute;
+  right: 6px;
+  transform: translateY(-50%);
+  font-size: 11px;
+  color: var(--gedimmt);
+}
+
+.tagspalte { position: relative; border-left: 1px solid var(--linie-fein); }
+.stundenlinie { position: absolute; left: 0; right: 0; border-top: 1px solid var(--linie-fein); }
+.stundenlinie.voll { border-top-color: var(--linie); }
+
+.termin {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  padding: 3px 5px;
+  border: 1px solid #9aa5ad;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.25;
+  overflow: hidden;
+}
+.termin .fach { font-weight: 600; font-size: 11.5px; }
+.termin .zeile { color: var(--gedimmt); }
+.termin .lage { color: var(--besonders); }
+
+.termin.entfaellt { background: var(--entfaellt-flaeche) !important; border-color: var(--entfaellt); color: var(--entfaellt); }
+.termin.entfaellt .fach { text-decoration: line-through; }
+.termin.entfaellt .zeile, .termin.entfaellt .lage { color: var(--entfaellt); }
+.termin.klassenplan { border: 1.5px dashed var(--akzent); }
+.termin.klassenplan .quelle { color: var(--akzent); }
+
+#fusszeile { margin: 0 14px 18px; font-size: 11px; color: var(--gedimmt); }
+
+#laden {
+  position: fixed;
+  inset: auto 0 0 0;
+  padding: 8px 14px;
+  background: var(--text);
+  color: #fff;
+  font-size: 13px;
+}
+
+/* ===== Druck ===== */
+
+@page { size: A4 landscape; margin: 10mm; }
+
+@media print {
+  body { background: #fff; }
+  .leiste, #laden, #einrichtung { display: none !important; }
+
+  #druckkopf {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  #druckkopf img { height: 30px; }
+  #druckkopf strong { display: block; font-size: 15px; }
+  #druckkopf span { color: #555; font-size: 11px; }
+
+  #raster {
+    margin: 0;
+    border-radius: 0;
+    /* Damit das Raster genau eine Seite fuellt. */
+    height: calc(100vh - 26mm);
+    break-inside: avoid;
+  }
+  #fusszeile { margin: 6px 0 0; font-size: 8pt; }
+
+  /* Farben muessen mit aufs Papier, sonst sind Entfaelle nicht erkennbar. */
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
