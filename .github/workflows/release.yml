@@ -57,11 +57,13 @@ jobs:
 
       - name: Paket schnüren
         shell: bash
+        # shutil statt zip: Auf den Windows-Laeufern ist zip nicht verlaesslich
+        # vorhanden, Python dagegen immer.
         run: |
           mkdir -p paket
           cp "dist/${{ matrix.datei }}" paket/
           cp ANLEITUNG.md paket/
-          cd paket && zip -r "../SZUntisPDF-${{ matrix.kennung }}.zip" .
+          python -c "import shutil; shutil.make_archive('SZUntisPDF-${{ matrix.kennung }}', 'zip', 'paket')"
 
       - uses: actions/upload-artifact@v4
         with:
