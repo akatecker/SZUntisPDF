@@ -25,7 +25,8 @@ jobs:
             bezeichnung: macOS (Apple Silicon)
             kennung: macos-arm64
             datei: SZUntisPDF
-          - laufer: macos-13
+          # macos-13 ist abgeschaltet: Jobs mit diesem Label starten nie.
+          - laufer: macos-15-intel
             bezeichnung: macOS (Intel)
             kennung: macos-intel
             datei: SZUntisPDF
