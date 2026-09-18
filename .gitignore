@@ -10,3 +10,9 @@ dist/
 *.spec
 !SZUntisPDF.spec
 .DS_Store
+android/local.properties
+android/.gradle/
+android/build/
+android/app/build/
+schluessel/
+android/schluessel.jks

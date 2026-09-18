@@ -1,8 +1,10 @@
 # SZUntisPDF
 
 Zeigt den WebUntis-Stundenplan eines Kindes an und druckt ihn als
-Wochenübersicht auf A4 quer – oder sichert ihn als PDF. Eine Datei, kein
-Installer, keine Laufzeitumgebung.
+Wochenübersicht auf A4 quer – oder sichert ihn als PDF. Für **macOS, Windows
+und Android**. Kein Installer, keine Laufzeitumgebung.
+
+Fächer erscheinen im Klartext statt als Kürzel – das leistet Untis Mobile nicht.
 
 Für Eltern: **[ANLEITUNG.md](ANLEITUNG.md)** – Start, Einrichtung, Drucken.
 Fertige Programme liegen unter [Releases](../../releases).
@@ -40,10 +42,48 @@ szuntis/
   konto.py              Zugang im Benutzerprofil ablegen
   subjects.py           111 Faecherabkuerzungen (erzeugt)
   web/                  Oberflaeche: HTML, CSS, JavaScript, jsQR
+android/                Android-App (Kotlin), teilt sich die Oberflaeche
+  app/src/main/java/.../Untis.kt          WebUntis-Client, TOTP, Zusammenfuehrung
+  app/src/main/java/.../LokalerServer.kt  bedient die WebView
+  app/src/main/java/.../MainActivity.kt   WebView, Kamera, Drucken
+  app/src/main/java/.../Faecher.kt        erzeugt aus szuntis/subjects.py
 werkzeuge/
   icons_bauen.py        Programmsymbole aus dem Schullogo
+  faecher_nach_kotlin.py  erzeugt die Kotlin-Fassung der Faecherliste
   rauchtest.py          prueft ein gebautes Programm ohne Zugangsdaten
 ```
+
+## Android
+
+Dieselbe Oberfläche, dieselbe Zusammenführungslogik – in Kotlin statt Python.
+Die HTML-Dateien liegen unverändert in den App-Assets; ein kleiner Server auf
+`127.0.0.1` bedient die WebView, weil eine WebView ihrerseits CORS durchsetzt
+und WebUntis deshalb auch dort nicht direkt ansprechen kann.
+
+Das Drucken übernimmt Androids eigenes Druck-Rahmenwerk über
+`WebView.createPrintDocumentAdapter()`; „Als PDF speichern" ist dort ein
+normales Druckziel. Die APK wiegt **0,8 MB**.
+
+Ein Intent-Filter auf `untis://setschool` bedeutet: Wer den QR-Code mit
+irgendeiner Kamera-App scannt, landet direkt in dieser App.
+
+Die Fächerliste wird aus derselben Quelle erzeugt wie die Desktop-Fassung:
+
+```bash
+python3 werkzeuge/faecher_nach_kotlin.py
+cd android && ./gradlew :app:assembleRelease
+```
+
+Gebaut wird gegen JDK 17; `JAVA_HOME` und `ANDROID_HOME` müssen gesetzt sein.
+
+### Signatur
+
+Liegt `android/schluessel.jks` vor, wird damit signiert – sonst mit dem
+Debug-Schlüssel. In GitHub Actions kommt der Schlüssel aus den Secrets
+`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORT` und
+`ANDROID_SCHLUESSEL_ALIAS`. Ohne sie lässt sich die APK zwar installieren, aber
+nicht über eine ältere Fassung drübersetzen, weil jede Veröffentlichung eine
+andere Signatur bekäme.
 
 ## Anmeldung
 

@@ -28,6 +28,14 @@ Es öffnet sich ein kleines schwarzes Fenster und kurz darauf der Browser mit
 dem Stundenplan. **Das schwarze Fenster muss offen bleiben**, solange man das
 Programm benutzt; Schließen beendet es.
 
+**Android** – die Datei `SZUntisPDF-android.apk` antippen. Android fragt einmalig,
+ob Apps aus dieser Quelle installiert werden dürfen: **Einstellungen** →
+**Installieren** erlauben → zurück und noch einmal antippen. Danach liegt die App
+wie jede andere im App-Raster.
+
+Ein Hinweis von Google Play Protect („unbekannter Entwickler") kann erscheinen –
+**Trotzdem installieren** wählen. Die App stammt nicht aus dem Play Store.
+
 ---
 
 ## Einrichten
@@ -43,6 +51,10 @@ Drei Wege stehen zur Wahl:
 | **Bild** | Screenshot oder Foto des Codes auswählen oder hineinziehen |
 | **Manuell** | Die vier Werte abtippen – sie stehen unter dem QR-Code |
 
+Auf Android geht es auch ohne die App zu öffnen: Wird der QR-Code mit einer
+beliebigen Kamera-App gescannt, bietet Android SZUntisPDF zum Öffnen an und der
+Zugang ist sofort eingerichtet.
+
 Danach ist der Zugang gespeichert; beim nächsten Start geht es direkt zum
 Stundenplan. Über **Konto** oben rechts lässt er sich wieder entfernen.
 
@@ -50,10 +62,11 @@ Stundenplan. Über **Konto** oben rechts lässt er sich wieder entfernen.
 
 ## Drucken und als PDF sichern
 
-Der Knopf **Drucken / PDF** öffnet den Druckdialog des Browsers.
+Der Knopf **Drucken / PDF** öffnet den Druckdialog.
 
 - **macOS:** unten links auf *PDF* → *Als PDF sichern*
 - **Windows:** als Drucker *Microsoft Print to PDF* wählen
+- **Android:** oben als Ziel *Als PDF speichern* wählen
 
 Gedruckt wird eine Wochenübersicht auf A4 quer. Entfallene Stunden stehen
 durchgestrichen und rot.
@@ -90,6 +103,7 @@ Der gespeicherte Zugang liegt hier:
 
 - **macOS:** `~/Library/Application Support/SZUntisPDF/konto.json`
 - **Windows:** `%APPDATA%\SZUntisPDF\konto.json`
+- **Android:** im privaten Bereich der App; er verschwindet beim Deinstallieren
 
 Dieser Zugangsschlüssel ist **so schützenswert wie ein Passwort** – er erlaubt
 dauerhaft Lesezugriff auf das WebUntis-Konto. Das Programm selbst enthält keine
