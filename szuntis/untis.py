@@ -17,6 +17,8 @@ import enum
 import hashlib
 import hmac
 import json
+import os
+import ssl
 import struct
 import time
 import urllib.error
@@ -31,6 +33,38 @@ _ZEITFORMAT = "%Y-%m-%dT%H:%M"
 
 class UntisFehler(RuntimeError):
     """Fehler der Gegenstelle oder der Anmeldung."""
+
+
+_TLS_KONTEXT: ssl.SSLContext | None = None
+
+
+def tls_kontext() -> ssl.SSLContext:
+    """Liefert einen TLS-Kontext, der auch im gepackten Programm Zertifikate hat.
+
+    Ein mit PyInstaller gebautes Programm findet den Zertifikatsspeicher seines
+    Bau-Pythons nicht wieder; jede HTTPS-Verbindung scheitert dann mit
+    ``CERTIFICATE_VERIFY_FAILED``. Unter Windows greift ``create_default_context``
+    auf den Systemspeicher zu, unter macOS nicht - deshalb die Rückfallkette.
+    """
+    global _TLS_KONTEXT
+    if _TLS_KONTEXT is not None:
+        return _TLS_KONTEXT
+
+    kontext = ssl.create_default_context()
+    if kontext.cert_store_stats().get("x509_ca", 0) == 0:
+        try:
+            import certifi
+
+            kontext.load_verify_locations(certifi.where())
+        except Exception:  # noqa: BLE001 - dann eben der Systemspeicher
+            for pfad in ("/etc/ssl/cert.pem", "/private/etc/ssl/cert.pem",
+                         "/usr/local/etc/openssl/cert.pem"):
+                if os.path.exists(pfad):
+                    kontext.load_verify_locations(pfad)
+                    break
+
+    _TLS_KONTEXT = kontext
+    return kontext
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -140,7 +174,8 @@ class UntisKonto:
             headers={"Content-Type": "application/json", "User-Agent": "SZUntisPDF/1.0"},
         )
         try:
-            with urllib.request.urlopen(anfrage, timeout=self.timeout) as antwort:
+            with urllib.request.urlopen(anfrage, timeout=self.timeout,
+                                        context=tls_kontext()) as antwort:
                 daten = json.loads(antwort.read().decode("utf-8"))
         except urllib.error.HTTPError as fehler:
             raise UntisFehler(
@@ -149,6 +184,10 @@ class UntisKonto:
         except urllib.error.URLError as fehler:
             raise UntisFehler(
                 f"Keine Verbindung zu {self.zugang.server}: {fehler.reason}"
+            ) from fehler
+        except ssl.SSLError as fehler:
+            raise UntisFehler(
+                f"Gesicherte Verbindung zu {self.zugang.server} nicht möglich: {fehler}"
             ) from fehler
         except (TimeoutError, OSError) as fehler:
             raise UntisFehler(f"Keine Verbindung zu {self.zugang.server}: {fehler}") from fehler

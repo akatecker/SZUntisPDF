@@ -22,7 +22,10 @@ analyse = Analysis(
     [str(WURZEL / "start.py")],
     pathex=[str(WURZEL)],
     datas=[(str(WURZEL / "szuntis" / "web"), "web")],
-    hiddenimports=["szuntis", "szuntis.server", "szuntis.untis", "szuntis.subjects", "szuntis.konto"],
+    # certifi liefert den Zertifikatsspeicher mit. Ohne ihn scheitert im
+    # gepackten Programm jede HTTPS-Verbindung an CERTIFICATE_VERIFY_FAILED.
+    hiddenimports=["szuntis", "szuntis.server", "szuntis.untis", "szuntis.subjects",
+                   "szuntis.konto", "certifi"],
     # Alles raus, was ein Stundenplan nicht braucht. Spart rund 3 MB.
     excludes=[
         "tkinter", "unittest", "pydoc", "doctest", "test", "distutils",

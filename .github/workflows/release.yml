@@ -41,15 +41,16 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: PyInstaller installieren
-        run: python -m pip install --upgrade pip pyinstaller
+      - name: Werkzeuge installieren
+        # certifi wird mitgepackt, sonst fehlt dem Programm der Zertifikatsspeicher.
+        run: python -m pip install --upgrade pip pyinstaller certifi
 
       - name: Bauen
         run: pyinstaller --noconfirm --clean SZUntisPDF.spec
 
       - name: Kurztest (startet und antwortet?)
         shell: bash
-        run: python werkzeuge/rauchtest.py "dist/${{ matrix.datei }}"
+        run: python werkzeuge/rauchtest.py "dist/${{ matrix.datei }}" --tls
 
       - name: Größe ausweisen
         shell: bash

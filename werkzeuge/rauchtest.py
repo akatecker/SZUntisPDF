@@ -22,7 +22,7 @@ import urllib.request
 WARTEZEIT = 60
 
 
-def main(pfad: str) -> int:
+def main(pfad: str, tls_pruefen: bool = False) -> int:
     if not os.path.exists(pfad):
         print(f"FEHLER: {pfad} gibt es nicht", file=sys.stderr)
         return 1
@@ -72,6 +72,16 @@ def main(pfad: str) -> int:
             print("FEHLER: Betriebsarten unvollständig", file=sys.stderr)
             fehler += 1
 
+        if tls_pruefen:
+            # Ein gepacktes Programm ohne Zertifikatsspeicher startet zwar,
+            # kann aber keine einzige Verbindung zu WebUntis aufbauen.
+            anzahl = status.get("tlsZertifikate", 0)
+            print(f"    Wurzelzertifikate: {anzahl}")
+            if anzahl < 10:
+                print("FEHLER: Kein Zertifikatsspeicher im Paket - HTTPS würde "
+                      "mit CERTIFICATE_VERIFY_FAILED scheitern.", file=sys.stderr)
+                fehler += 1
+
         # Ohne Schluessel muss die Schnittstelle dichtmachen.
         try:
             urllib.request.urlopen(basis + "/api/status", timeout=20)
@@ -92,7 +102,8 @@ def main(pfad: str) -> int:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
+    argumente = [a for a in sys.argv[1:] if not a.startswith("--")]
+    if len(argumente) != 1:
         print(__doc__)
         raise SystemExit(2)
-    raise SystemExit(main(sys.argv[1]))
+    raise SystemExit(main(argumente[0], tls_pruefen="--tls" in sys.argv))

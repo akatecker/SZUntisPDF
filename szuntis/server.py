@@ -26,7 +26,7 @@ import threading
 import urllib.parse
 
 from . import konto as kontoablage
-from .untis import Modus, Termin, UntisFehler, UntisKonto, Zugang
+from .untis import Modus, Termin, UntisFehler, UntisKonto, Zugang, tls_kontext
 
 
 def web_ordner() -> pathlib.Path:
@@ -190,6 +190,9 @@ class Anfrage(http.server.BaseHTTPRequestHandler):
                 "schule": konto.zugang.schule if konto else "",
                 "modi": [m.value for m in Modus],
                 "standardModus": Modus.AENDERUNGEN.value,
+                # Anzahl bekannter Wurzelzertifikate. Ist sie 0, scheitert jede
+                # Verbindung zu WebUntis - der Rauchtest prüft genau das.
+                "tlsZertifikate": tls_kontext().cert_store_stats().get("x509_ca", 0),
             })
 
         if pfad == "/api/plan":
