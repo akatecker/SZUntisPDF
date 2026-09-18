@@ -6,5 +6,7 @@ __pycache__/
 *.pyc
 build/
 dist/
+# PyInstaller-Ausgaben, aber nicht der handgeschriebene Bauplan
 *.spec
+!SZUntisPDF.spec
 .DS_Store
