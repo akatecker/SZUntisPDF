@@ -91,7 +91,17 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - uses: android-actions/setup-android@v3
+      - name: Android-SDK bereitstellen
+        # Der Ubuntu-Läufer bringt das SDK mit; die Aktion
+        # android-actions/setup-android scheitert am längst entfernten
+        # Paket "tools". Also direkt der mitgelieferte sdkmanager.
+        run: |
+          SDK="${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          CLI=$(ls -d "$SDK"/cmdline-tools/*/bin | sort -V | tail -1)
+          yes | "$CLI/sdkmanager" --licenses > /dev/null 2>&1 || true
+          "$CLI/sdkmanager" "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+          ls "$SDK/platforms"
 
       - name: Signaturschlüssel bereitstellen
         # Nur wenn die Secrets hinterlegt sind. Fehlen sie, signiert Gradle mit
