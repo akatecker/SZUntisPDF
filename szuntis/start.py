@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import os
 import pathlib
+import socket
 import subprocess
 import sys
 import webbrowser
@@ -75,6 +76,37 @@ def _profilordner() -> pathlib.Path:
     return ordner
 
 
+def _sperren_aufraeumen(profil: pathlib.Path) -> None:
+    """Entfernt liegengebliebene Sperrdateien des Browserprofils.
+
+    Wird der Browser hart beendet, bleibt ``SingletonLock`` zurück - ein
+    Symlink auf ``rechnername-pid``. Stammt er von einem anderen Rechnernamen
+    oder ist der Prozess tot, weigert sich Chromium, ihn zu brechen: Es meldet
+    "Opening in existing browser session", beendet sich sofort, und es
+    erscheint kein Fenster. Ohne Konsole sieht davon niemand etwas.
+    """
+    sperre = profil / "SingletonLock"
+    if not sperre.is_symlink():
+        return
+    try:
+        ziel = os.readlink(sperre)
+        rechner, _, pid = ziel.rpartition("-")
+        lebt = rechner == socket.gethostname() and pid.isdigit() and _laeuft(int(pid))
+    except OSError:
+        lebt = False
+    if not lebt:
+        for name in ("SingletonLock", "SingletonCookie", "SingletonSocket"):
+            (profil / name).unlink(missing_ok=True)
+
+
+def _laeuft(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    return True
+
+
 def oberflaeche_oeffnen(adresse: str) -> str:
     """Öffnet die Adresse und meldet zurück, auf welchem Weg."""
     if os.environ.get("SZUNTIS_KEIN_BROWSER"):
@@ -82,12 +114,14 @@ def oberflaeche_oeffnen(adresse: str) -> str:
 
     browser = _chromium_finden()
     if browser:
+        profil = _profilordner()
+        _sperren_aufraeumen(profil)
         try:
-            subprocess.Popen(
+            vorgang = subprocess.Popen(
                 [
                     browser,
                     f"--app={adresse}",
-                    f"--user-data-dir={_profilordner()}",
+                    f"--user-data-dir={profil}",
                     "--window-size=1280,860",
                     "--no-first-run",
                     "--no-default-browser-check",
@@ -97,7 +131,13 @@ def oberflaeche_oeffnen(adresse: str) -> str:
                 env=_saubere_umgebung(),
                 start_new_session=True,
             )
-            return f"eigenes Fenster ({pathlib.Path(browser).stem})"
+            # Reicht der Browser an eine andere Sitzung weiter, beendet er
+            # sich sofort und es erscheint kein Fenster. Dann lieber den
+            # Standardweg gehen, als den Benutzer ratlos zurueckzulassen.
+            try:
+                vorgang.wait(timeout=4)
+            except subprocess.TimeoutExpired:
+                return f"eigenes Fenster ({pathlib.Path(browser).stem})"
         except OSError:
             pass  # dann eben der Standardweg
 
