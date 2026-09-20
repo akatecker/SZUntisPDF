@@ -375,6 +375,34 @@ $("konto-wechseln").addEventListener("click", async () => {
   location.reload();
 });
 
+/* ================= Lebenszeichen ================= */
+
+/* Das Programm hat kein eigenes Fenster und keine Konsole. Damit es sich
+   beenden kann, wenn niemand mehr zusieht, meldet sich die Oberflaeche
+   regelmaessig. Bleibt sie aus, macht das Programm von selbst Schluss. */
+const aufTelefon = typeof Android !== "undefined";
+
+if (!aufTelefon) {
+  setInterval(() => { ruf("/api/puls").catch(() => {}); }, 30000);
+
+  /* Beim Schliessen des Fensters Bescheid geben, statt den Waechter zehn
+     Minuten warten zu lassen. Bewusst kein hartes Beenden: pagehide feuert
+     auch beim Neuladen. Das Signal verkuerzt nur die Geduld auf wenige
+     Sekunden - kommt die Seite zurueck, bleibt alles wie es war. */
+  addEventListener("pagehide", () => {
+    navigator.sendBeacon?.("/api/schliesst?s=" + encodeURIComponent(schluessel));
+  });
+
+  $("beenden").hidden = false;
+  $("beenden").addEventListener("click", async () => {
+    await ruf("/api/beenden", { method: "POST" }).catch(() => {});
+    document.body.innerHTML =
+      '<p style="padding:40px;font:15px sans-serif;color:#667079">' +
+      "SZUntisPDF wurde beendet. Dieses Fenster kann geschlossen werden.</p>";
+    setTimeout(() => window.close(), 300);
+  });
+}
+
 /* ================= Start ================= */
 
 async function starte() {

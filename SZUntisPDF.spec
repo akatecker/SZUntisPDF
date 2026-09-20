@@ -2,10 +2,10 @@
 #
 # Aufruf:  pyinstaller --noconfirm SZUntisPDF.spec
 #
-# Bewusst als Konsolenprogramm: Das Fenster zeigt die Adresse der Oberflaeche,
-# falls sich der Browser nicht von selbst oeffnet, und das Schliessen des
-# Fensters beendet das Programm. Ohne Konsole gaebe es unter Windows keinen
-# Weg, es wieder loszuwerden.
+# Bewusst OHNE Konsolenfenster: Die Oberflaeche ist das Programm. Beendet wird,
+# indem man ihr Fenster schliesst - sie schickt Lebenszeichen, und bleiben die
+# aus, macht das Programm von selbst Schluss. Die Adresse steht zusaetzlich in
+# adresse.txt im Anwendungsordner, falls sich kein Fenster oeffnet.
 
 import sys
 from pathlib import Path
@@ -45,9 +45,29 @@ exe = EXE(
     analyse.datas,
     [],
     name="SZUntisPDF",
-    console=True,
+    console=False,
     icon=symbol,
     upx=False,          # bringt bei Python-Paketen kaum etwas und stoert Virenscanner
     strip=sys.platform != "win32",
     onefile=True,
 )
+
+if sys.platform == "darwin":
+    # Erst ein .app-Buendel macht aus dem Binaer ein richtiges Programm:
+    # Symbol im Finder, Eintrag im Dock, ordentlicher Name.
+    app = BUNDLE(
+        exe,
+        name="SZUntisPDF.app",
+        icon=symbol,
+        bundle_identifier="io.github.akatecker.szuntispdf",
+        info_plist={
+            "CFBundleName": "SZUntisPDF",
+            "CFBundleDisplayName": "SZUntisPDF",
+            "CFBundleShortVersionString": "1.2.0",
+            "CFBundleVersion": "1.2.0",
+            "NSHighResolutionCapable": True,
+            "LSApplicationCategoryType": "public.app-category.education",
+            # Kein Fenster von uns selbst - die Oberflaeche laeuft im Browser.
+            "LSBackgroundOnly": False,
+        },
+    )

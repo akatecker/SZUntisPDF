@@ -24,16 +24,16 @@ jobs:
           - laufer: macos-14
             bezeichnung: macOS (Apple Silicon)
             kennung: macos-arm64
-            datei: SZUntisPDF
+            pruefpfad: dist/SZUntisPDF.app/Contents/MacOS/SZUntisPDF
           # macos-13 ist abgeschaltet: Jobs mit diesem Label starten nie.
           - laufer: macos-15-intel
             bezeichnung: macOS (Intel)
             kennung: macos-intel
-            datei: SZUntisPDF
+            pruefpfad: dist/SZUntisPDF.app/Contents/MacOS/SZUntisPDF
           - laufer: windows-latest
             bezeichnung: Windows
             kennung: windows-x64
-            datei: SZUntisPDF.exe
+            pruefpfad: dist/SZUntisPDF.exe
 
     steps:
       - uses: actions/checkout@v4
@@ -51,21 +51,24 @@ jobs:
 
       - name: Kurztest (startet und antwortet?)
         shell: bash
-        run: python werkzeuge/rauchtest.py "dist/${{ matrix.datei }}" --tls
-
-      - name: Größe ausweisen
-        shell: bash
-        run: ls -l "dist/${{ matrix.datei }}" | awk '{printf "%.1f MB\n", $5/1048576}'
+        run: python werkzeuge/rauchtest.py "${{ matrix.pruefpfad }}" --tls
 
       - name: Paket schnüren
         shell: bash
-        # shutil statt zip: Auf den Windows-Laeufern ist zip nicht verlaesslich
-        # vorhanden, Python dagegen immer.
+        # macOS: ditto statt zip, sonst verliert das .app-Buendel das
+        # Ausfuehrungsrecht und laesst sich beim Empfaenger nicht starten.
+        # Windows: shutil, weil zip auf den Laeufern nicht verlaesslich da ist.
         run: |
           mkdir -p paket
-          cp "dist/${{ matrix.datei }}" paket/
           cp ANLEITUNG.md paket/
-          python -c "import shutil; shutil.make_archive('SZUntisPDF-${{ matrix.kennung }}', 'zip', 'paket')"
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            cp -R dist/SZUntisPDF.app paket/
+            ditto -c -k --sequesterRsrc --keepParent paket "SZUntisPDF-${{ matrix.kennung }}.zip"
+          else
+            cp dist/SZUntisPDF.exe paket/
+            python -c "import shutil; shutil.make_archive('SZUntisPDF-${{ matrix.kennung }}', 'zip', 'paket')"
+          fi
+          ls -l "SZUntisPDF-${{ matrix.kennung }}.zip" | awk '{printf "Paket: %.1f MB\n", $5/1048576}'
 
       - uses: actions/upload-artifact@v4
         with:

@@ -20,6 +20,7 @@ import http.server
 import json
 import mimetypes
 import pathlib
+import time
 import secrets
 import sys
 import threading
@@ -63,6 +64,13 @@ class Zustand:
         self._konto: UntisKonto | None = None
         self._name: str = ""
         self._sperre = threading.Lock()
+        #: Zeitpunkt des letzten Lebenszeichens der Oberfläche. Bleibt es aus,
+        #: ist das Fenster zu und das Programm kann sich beenden.
+        self.letztes_lebenszeichen = time.monotonic()
+        #: Wird gesetzt, wenn sich das Programm beenden soll.
+        self.schluss = threading.Event()
+        #: Wie lange ohne Lebenszeichen gewartet wird, in Sekunden.
+        self.geduld = 600.0
 
     def konto(self) -> UntisKonto | None:
         return self._konto
@@ -140,9 +148,16 @@ class Anfrage(http.server.BaseHTTPRequestHandler):
         gastgeber = (self.headers.get("Host") or "").split(":")[0]
         if gastgeber not in ("127.0.0.1", "localhost"):
             return False  # schützt vor DNS-Rebinding
-        return secrets.compare_digest(
-            self.headers.get("X-SZU-Schluessel", ""), self.zustand.geheimnis
-        )
+
+        mitgeschickt = self.headers.get("X-SZU-Schluessel", "")
+        if not mitgeschickt:
+            # navigator.sendBeacon kann keine Kopfzeilen setzen; für den
+            # Abschiedsgruß beim Fensterschließen ist die Abfrage der einzige
+            # Weg. Unbedenklich: Es geht nur um die Loopback-Adresse, und ohne
+            # das Geheimnis passiert weiterhin nichts.
+            felder = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            mitgeschickt = felder.get("s", [""])[0]
+        return secrets.compare_digest(mitgeschickt, self.zustand.geheimnis)
 
     # -- Weiterleitung -----------------------------------------------------
 
@@ -151,6 +166,7 @@ class Anfrage(http.server.BaseHTTPRequestHandler):
         if pfad.startswith("/api/"):
             if not self._zugelassen():
                 return self._fehler("Nicht zugelassen.", 403)
+            self.zustand.letztes_lebenszeichen = time.monotonic()
             return self._api_get(pfad)
         return self._datei_ausliefern(pfad)
 
@@ -195,6 +211,11 @@ class Anfrage(http.server.BaseHTTPRequestHandler):
                 "tlsZertifikate": tls_kontext().cert_store_stats().get("x509_ca", 0),
             })
 
+        if pfad == "/api/puls":
+            # Die Oberfläche meldet sich regelmäßig. Hört sie auf, wurde das
+            # Fenster geschlossen - dann beendet sich das Programm von selbst.
+            return self._json({"ok": True})
+
         if pfad == "/api/plan":
             konto = self.zustand.konto()
             if konto is None:
@@ -223,6 +244,24 @@ class Anfrage(http.server.BaseHTTPRequestHandler):
         self._fehler("Unbekannter Aufruf.", 404)
 
     def _api_post(self, pfad: str) -> None:
+        if pfad == "/api/beenden":
+            self._json({"ok": True})
+            self.zustand.schluss.set()
+            return
+
+        if pfad == "/api/schliesst":
+            # Das Fenster geht zu - aber vielleicht nur, weil neu geladen wird.
+            # Darum nicht sofort Schluss machen, sondern die Geduld des Wächters
+            # auf wenige Sekunden verkürzen. Kommt gleich wieder eine Anfrage,
+            # war es ein Neuladen und alles bleibt.
+            # max(): Bei kurzer Geduld ergäbe die Differenz sonst einen Zeitpunkt
+            # in der Zukunft, und der Wächter schlüge nie an.
+            self.zustand.letztes_lebenszeichen = (
+                time.monotonic() - max(self.zustand.geduld - 8.0, 0.0)
+            )
+            self._json({"ok": True})
+            return
+
         if pfad != "/api/konto":
             return self._fehler("Unbekannter Aufruf.", 404)
 

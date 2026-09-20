@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import os
+import pathlib
 import re
 import subprocess
 import sys
@@ -22,32 +23,50 @@ import urllib.request
 WARTEZEIT = 60
 
 
+def _adressdatei() -> pathlib.Path:
+    """Dieselbe Stelle, an die das Programm seine Adresse schreibt."""
+    if sys.platform == "win32":
+        basis = pathlib.Path(os.environ.get("APPDATA", pathlib.Path.home() / "AppData" / "Roaming"))
+    elif sys.platform == "darwin":
+        basis = pathlib.Path.home() / "Library" / "Application Support"
+    else:
+        basis = pathlib.Path(os.environ.get("XDG_CONFIG_HOME", pathlib.Path.home() / ".config"))
+    return basis / "SZUntisPDF" / "adresse.txt"
+
+
 def main(pfad: str, tls_pruefen: bool = False) -> int:
     if not os.path.exists(pfad):
         print(f"FEHLER: {pfad} gibt es nicht", file=sys.stderr)
         return 1
 
     umgebung = dict(os.environ, BROWSER="true", SZUNTIS_KEIN_BROWSER="1")
+    adressdatei = _adressdatei()
+    adressdatei.unlink(missing_ok=True)
     prozess = subprocess.Popen(
         [pfad], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=umgebung
     )
 
+    # Als Fensterprogramm gepackt gibt es keine Konsolenausgabe mehr; die
+    # Adresse holen wir deshalb aus der Datei, die das Programm schreibt.
     port = schluessel = None
     grenze = time.time() + WARTEZEIT
     while time.time() < grenze:
-        zeile = prozess.stdout.readline()
-        if not zeile:
-            break
-        print("   ", zeile.rstrip())
-        treffer = re.search(r"http://127\.0\.0\.1:(\d+)/\?s=(\S+)", zeile)
-        if treffer:
-            port, schluessel = treffer.group(1), treffer.group(2)
-        if "Beenden" in zeile:
-            break
+        if prozess.poll() is not None:
+            print("FEHLER: Das Programm hat sich sofort beendet.", file=sys.stderr)
+            print(prozess.stdout.read(), file=sys.stderr)
+            return 1
+        if adressdatei.exists():
+            treffer = re.search(r"http://127\.0\.0\.1:(\d+)/\?s=(\S+)",
+                                adressdatei.read_text(encoding="utf-8"))
+            if treffer:
+                port, schluessel = treffer.group(1), treffer.group(2)
+                print(f"    Adresse aus {adressdatei.name}: Port {port}")
+                break
+        time.sleep(0.5)
 
     if not port:
         prozess.kill()
-        print("FEHLER: Das Programm hat keine Adresse ausgegeben.", file=sys.stderr)
+        print("FEHLER: Das Programm hat keine Adresse hinterlegt.", file=sys.stderr)
         return 1
 
     basis = f"http://127.0.0.1:{port}"

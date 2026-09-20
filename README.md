@@ -53,6 +53,25 @@ werkzeuge/
   rauchtest.py          prueft ein gebautes Programm ohne Zugangsdaten
 ```
 
+## Bedienung ohne Terminal
+
+Das Programm hat kein eigenes Fenster und seit Fassung 1.2 auch keine Konsole
+mehr. Die Oberfläche ist das Programm:
+
+* Sie öffnet sich in einem Chromium-Fenster mit `--app=` – ohne Adresszeile
+  und Tableiste, mit eigenem Eintrag im Dock bzw. der Taskleiste und dem
+  Schullogo als Symbol. Ist kein Chromium-Browser da (Edge, Chrome, Brave),
+  wird der Standardbrowser genommen.
+* Ein eigener Profilordner sorgt dafür, dass das Fenster unabhängig von einer
+  laufenden Browsersitzung ist und nicht mit ihr verschwindet.
+* Die Oberfläche schickt alle 30 Sekunden ein Lebenszeichen. Bleibt es aus,
+  beendet sich das Programm – **Fenster schließen genügt**. Beim Schließen wird
+  zusätzlich ein Signal geschickt, das die Wartezeit auf wenige Sekunden
+  verkürzt; ein *Neuladen* löst das bewusst nicht aus.
+* Solange es läuft, steht die Adresse in `adresse.txt` im Anwendungsordner.
+
+Unter macOS entsteht ein echtes `.app`-Bündel mit Symbol und Dock-Eintrag.
+
 ## Android
 
 Dieselbe Oberfläche, dieselbe Zusammenführungslogik – in Kotlin statt Python.

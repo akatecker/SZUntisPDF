@@ -7,26 +7,32 @@ Wochenübersicht – oder sichert ihn als PDF.
 
 ## Starten
 
-**macOS** – beim ersten Mal:
+**macOS** – `SZUntisPDF.app` am besten in den Ordner *Programme* ziehen. Beim
+ersten Start:
 
-1. Rechtsklick (oder Ctrl+Klick) auf `SZUntisPDF` → **Öffnen**
+1. Rechtsklick (oder Ctrl+Klick) auf die App → **Öffnen**
 2. Im Hinweisfenster noch einmal auf **Öffnen** klicken
 
 Der Umweg ist einmalig nötig, weil das Programm nicht bei Apple registriert
-ist. Ab dann genügt ein Doppelklick. Falls macOS meldet, die Datei sei
+ist. Ab dann genügt ein Doppelklick. Falls macOS meldet, die App sei
 „beschädigt", hilft im Programm *Terminal* dieser Befehl – danach normal öffnen:
 
 ```
-xattr -dr com.apple.quarantine ~/Downloads/SZUntisPDF
+xattr -dr com.apple.quarantine /Applications/SZUntisPDF.app
 ```
 
 **Windows** – Doppelklick auf `SZUntisPDF.exe`. Meldet sich der SmartScreen-Filter
 mit „Der Computer wurde geschützt", auf **Weitere Informationen** und dann
 **Trotzdem ausführen** klicken. Auch das ist einmalig.
 
-Es öffnet sich ein kleines schwarzes Fenster und kurz darauf der Browser mit
-dem Stundenplan. **Das schwarze Fenster muss offen bleiben**, solange man das
-Programm benutzt; Schließen beendet es.
+Es öffnet sich ein Fenster mit dem Stundenplan – ohne Adresszeile, wie ein
+gewöhnliches Programm. **Das Fenster zu schließen beendet SZUntisPDF**, ganz
+so, wie man es erwartet. Alternativ gibt es oben rechts einen Knopf *Beenden*.
+
+Sollte sich kein Fenster zeigen, steht die Adresse zum Kopieren in einer Datei:
+
+- **macOS:** `~/Library/Application Support/SZUntisPDF/adresse.txt`
+- **Windows:** `%APPDATA%\SZUntisPDF\adresse.txt`
 
 **Android** – die Datei `SZUntisPDF-android.apk` antippen. Android fragt einmalig,
 ob Apps aus dieser Quelle installiert werden dürfen: **Einstellungen** →
