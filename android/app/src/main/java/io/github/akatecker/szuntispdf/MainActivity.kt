@@ -129,17 +129,24 @@ class MainActivity : AppCompatActivity() {
      */
     private inner class Bruecke {
 
-        /** Öffnet den Druckdialog von Android - dort auch "Als PDF speichern". */
+        /**
+         * Öffnet den Druckdialog von Android - dort auch "Als PDF speichern".
+         *
+         * Das Wochenraster braucht Querformat, die Aufgabenliste Hochformat.
+         */
         @JavascriptInterface
-        fun drucken(titel: String) {
+        fun drucken(titel: String, quer: Boolean) {
             runOnUiThread {
                 val dienst = getSystemService(PRINT_SERVICE) as PrintManager
                 val name = titel.ifBlank { "Stundenplan" }
+                val format = PrintAttributes.MediaSize.ISO_A4.let {
+                    if (quer) it.asLandscape() else it.asPortrait()
+                }
                 dienst.print(
                     name,
                     browser.createPrintDocumentAdapter(name),
                     PrintAttributes.Builder()
-                        .setMediaSize(PrintAttributes.MediaSize.ISO_A4.asLandscape())
+                        .setMediaSize(format)
                         .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
                         .build(),
                 )

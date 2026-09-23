@@ -115,6 +115,23 @@ iCal-Abo (nur Termine) oder die
 [Untis-Platform-API](https://developer.untis.com/) – letztere allerdings nur
 für Integrationspartner mit Freischaltung durch die Schule.
 
+## Hausaufgaben
+
+Eine zweite Ansicht listet die Hausübungen der Woche, nach Fälligkeit sortiert,
+und druckt sie hochkant auf A4 (der Stundenplan quer – die `@page`-Regel wird
+beim Umschalten ausgetauscht, unter Android bekommt der Druckadapter die
+Ausrichtung mitgeteilt).
+
+WebUntis filtert `getHomeWork2017` nach dem **Fälligkeitsdatum**. Eine am
+Mittwoch aufgegebene Aufgabe, die erst nächsten Montag fällig ist, fiele damit
+aus der Wochenansicht heraus – obwohl sie genau jetzt zu erledigen ist. Deshalb
+wird ein weiter Zeitraum abgefragt und anschließend auf Überschneidung mit der
+Woche geprüft; Einträge außerhalb der Woche sind gekennzeichnet.
+
+Die Stundendaten führen dieselben Aufgaben ebenfalls mit, dort aber mehrfach an
+jeder betroffenen Stunde und nur, solange die Stunde in der Woche stattfindet.
+Die eigene Abfrage ist verlässlicher.
+
 ## Persönlicher Plan und Klassenplan
 
 Lehrkräfte tragen Änderungen oft zuerst im Klassenplan ein. Der ist allerdings

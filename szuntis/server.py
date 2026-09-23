@@ -27,7 +27,8 @@ import threading
 import urllib.parse
 
 from . import konto as kontoablage
-from .untis import Modus, Termin, UntisFehler, UntisKonto, Zugang, tls_kontext
+from .untis import (Hausaufgabe, Modus, Termin, UntisFehler, UntisKonto, Zugang,
+                    tls_kontext)
 
 
 def web_ordner() -> pathlib.Path:
@@ -53,6 +54,22 @@ def _termin_als_json(termin: Termin) -> dict:
         "entfaellt": termin.entfaellt,
         "ausKlassenplan": termin.aus_klassenplan,
         "klassenHinweis": termin.klassen_hinweis,
+    }
+
+
+def _hausaufgabe_als_json(aufgabe: Hausaufgabe) -> dict:
+    return {
+        "aufgegeben": aufgabe.aufgegeben.isoformat(),
+        "faellig": aufgabe.faellig.isoformat(),
+        "kuerzel": aufgabe.kuerzel,
+        "fach": aufgabe.fach,
+        "fachExakt": aufgabe.fach_exakt,
+        "lehrkraft": aufgabe.lehrkraft,
+        "text": aufgabe.text,
+        "anmerkung": aufgabe.anmerkung,
+        "erledigt": aufgabe.erledigt,
+        "anhaenge": aufgabe.anhaenge,
+        "laeuftLaenger": aufgabe.laeuft_laenger,
     }
 
 
@@ -239,6 +256,25 @@ class Anfrage(http.server.BaseHTTPRequestHandler):
                 "montag": montag.isoformat(),
                 "modus": modus.value,
                 "termine": [_termin_als_json(t) for t in termine],
+            })
+
+        if pfad == "/api/hausaufgaben":
+            konto = self.zustand.konto()
+            if konto is None:
+                return self._fehler("Kein Konto eingerichtet.", 409)
+            felder = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            try:
+                montag = dt.date.fromisoformat(felder.get("montag", [""])[0])
+            except ValueError:
+                return self._fehler("Ungültiges Datum.")
+            try:
+                aufgaben = konto.hausaufgaben(montag)
+            except UntisFehler as fehler:
+                return self._fehler(str(fehler), 502)
+            return self._json({
+                "name": self.zustand.name,
+                "montag": montag.isoformat(),
+                "aufgaben": [_hausaufgabe_als_json(a) for a in aufgaben],
             })
 
         self._fehler("Unbekannter Aufruf.", 404)

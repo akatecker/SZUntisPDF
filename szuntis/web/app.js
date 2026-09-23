@@ -344,6 +344,120 @@ function terminKasten(termin, lage, versatz, anzahl) {
 
 const sicher = (text) => String(text ?? "").replace(/[<>&]/g, (z) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[z]);
 
+/* ================= Hausaufgaben ================= */
+
+let ansicht = "plan";          // "plan" oder "hausaufgaben"
+
+function ansichtWechseln(neue) {
+  ansicht = neue;
+  const istPlan = neue === "plan";
+  $("zeige-plan").classList.toggle("aktiv", istPlan);
+  $("zeige-hausaufgaben").classList.toggle("aktiv", !istPlan);
+  $("rasterrahmen").hidden = !istPlan;
+  $("hausaufgaben").hidden = istPlan;
+  $("modus").hidden = !istPlan;          // betrifft nur den Stundenplan
+  druckformat(istPlan);
+  laden2();
+}
+
+/* Der Stundenplan will Querformat, die Aufgabenliste Hochformat. @page laesst
+   sich nicht per Klasse umschalten, also wird die Regel ausgetauscht. */
+function druckformat(quer) {
+  let regel = document.getElementById("druckformat");
+  if (!regel) {
+    regel = document.createElement("style");
+    regel.id = "druckformat";
+    document.head.appendChild(regel);
+  }
+  regel.textContent = `@page { size: A4 ${quer ? "landscape" : "portrait"}; margin: 10mm; }`;
+}
+
+const TAGE_KURZ = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
+
+function aufgabenZeichnen(daten) {
+  const ziel = $("hausaufgaben");
+  ziel.innerHTML = "";
+  $("schueler").textContent = daten.name;
+  $("druck-name").textContent = daten.name;
+
+  const sonntag = new Date(montag); sonntag.setDate(sonntag.getDate() + 6);
+  const spanne = `${kurz(montag)} – ${kurz(sonntag)}${sonntag.getFullYear()}`;
+  $("woche-text").textContent = spanne;
+  $("druck-woche").textContent = "Hausaufgaben " + spanne;
+
+  if (!daten.aufgaben.length) {
+    ziel.innerHTML = '<p class="leer">Für diese Woche sind keine Hausaufgaben eingetragen.</p>';
+    $("fusszeile").textContent = "";
+    return;
+  }
+
+  const heute = alsIso(new Date());
+  const wochenende = alsIso(sonntag);
+  const wochenanfang = alsIso(montag);
+
+  for (const a of daten.aufgaben) {
+    const faellig = new Date(a.faellig + "T00:00");
+    const ueberfaellig = a.faellig < heute && !a.erledigt;
+
+    /* Die Liste zeigt alles, was diese Woche zu tun ist - auch Aufgaben, die
+       erst danach faellig sind. Ohne Hinweis waere unklar, warum ein Datum
+       ausserhalb der Kopfzeile steht. */
+    let marke = "";
+    if (ueberfaellig) marke = '<span class="marke">überfällig</span>';
+    else if (a.faellig === heute) marke = '<span class="marke bald">heute</span>';
+    else if (a.faellig > wochenende) marke = '<span class="marke bald">nach dieser Woche</span>';
+    else if (a.faellig < wochenanfang) marke = '<span class="marke bald">aus der Vorwoche</span>';
+
+    const teile = [];
+    teile.push(`<div class="frist">
+        <span class="tag">${TAGE_KURZ[faellig.getDay()]}</span>
+        <span class="datum">${kurz(faellig)}</span>
+        ${marke}
+      </div>`);
+
+    const beiwerk = [];
+    if (a.lehrkraft) beiwerk.push(sicher(a.lehrkraft));
+    if (a.laeuftLaenger) beiwerk.push("aufgegeben " + kurz(new Date(a.aufgegeben + "T00:00")));
+    if (a.anhaenge) beiwerk.push(`${a.anhaenge} Anhang/Anhänge (nur in WebUntis)`);
+    if (a.erledigt) beiwerk.push("als erledigt markiert");
+    if (a.anmerkung) beiwerk.push(sicher(a.anmerkung));
+
+    teile.push(`<div>
+        <div class="fach">${sicher(a.fach)}${a.fachExakt ? "" : " *"}
+          <span class="kuerzel">${sicher(a.kuerzel)}</span></div>
+        <div class="text">${sicher(a.text) || "<em>ohne Text</em>"}</div>
+        ${beiwerk.length ? `<div class="beiwerk">${beiwerk.join("  ·  ")}</div>` : ""}
+      </div>`);
+
+    const zeile = document.createElement("div");
+    zeile.className = "aufgabe" + (a.erledigt ? " erledigt" : "");
+    zeile.innerHTML = teile.join("");
+    ziel.appendChild(zeile);
+  }
+
+  const abgeleitet = daten.aufgaben.filter((a) => !a.fachExakt).length;
+  const teile = [`${daten.aufgaben.length} Aufgabe(n)`,
+                 `Erstellt am ${new Date().toLocaleString("de-AT", { dateStyle: "short", timeStyle: "short" })}`];
+  if (abgeleitet) teile.push(`* ${abgeleitet} Bezeichnung(en) aus der Stammform abgeleitet`);
+  $("fusszeile").textContent = teile.join("  ·  ");
+}
+
+async function aufgabenLaden() {
+  laden(true);
+  try {
+    aufgabenZeichnen(await ruf(`/api/hausaufgaben?montag=${alsIso(montag)}`));
+  } catch (fehler) {
+    $("hausaufgaben").innerHTML = `<p class="leer" style="color:var(--entfaellt)">${sicher(fehler.message)}</p>`;
+  } finally {
+    laden(false);
+  }
+}
+
+/** Laedt, was gerade sichtbar ist. */
+function laden2() {
+  return ansicht === "plan" ? planLaden() : aufgabenLaden();
+}
+
 async function planLaden() {
   laden(true);
   try {
@@ -356,15 +470,19 @@ async function planLaden() {
   }
 }
 
-$("woche-zurueck").addEventListener("click", () => { montag.setDate(montag.getDate() - 7); planLaden(); });
-$("woche-vor").addEventListener("click", () => { montag.setDate(montag.getDate() + 7); planLaden(); });
-$("woche-heute").addEventListener("click", () => { montag = standardMontag(); planLaden(); });
+$("woche-zurueck").addEventListener("click", () => { montag.setDate(montag.getDate() - 7); laden2(); });
+$("woche-vor").addEventListener("click", () => { montag.setDate(montag.getDate() + 7); laden2(); });
+$("woche-heute").addEventListener("click", () => { montag = standardMontag(); laden2(); });
 $("modus").addEventListener("change", planLaden);
+$("zeige-plan").addEventListener("click", () => ansichtWechseln("plan"));
+$("zeige-hausaufgaben").addEventListener("click", () => ansichtWechseln("hausaufgaben"));
 $("drucken").addEventListener("click", () => {
   /* In der Android-App uebernimmt das System den Druckdialog; dort heisst
      "Als PDF speichern" genauso wie am Rechner. */
   if (typeof Android !== "undefined" && Android.drucken) {
-    Android.drucken(`Stundenplan ${$("schueler").textContent} ${$("woche-text").textContent}`);
+    const was = ansicht === "plan" ? "Stundenplan" : "Hausaufgaben";
+    Android.drucken(`${was} ${$("schueler").textContent} ${$("woche-text").textContent}`,
+                    ansicht === "plan");
   } else {
     window.print();
   }
@@ -430,7 +548,8 @@ async function starte() {
     }
   }
   if (!montag) montag = standardMontag();
-  await planLaden();
+  druckformat(ansicht === "plan");
+  await laden2();
 }
 
 starte().catch((fehler) => {

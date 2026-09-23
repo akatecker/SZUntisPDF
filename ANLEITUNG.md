@@ -66,16 +66,35 @@ Stundenplan. Über **Konto** oben rechts lässt er sich wieder entfernen.
 
 ---
 
+## Stundenplan oder Hausaufgaben
+
+Oben lässt sich zwischen zwei Ansichten umschalten:
+
+**Stundenplan** – das Wochenraster, quer auf A4.
+
+**Hausaufgaben** – alles, was in dieser Woche zu tun ist, nach Fälligkeit
+sortiert und hochkant auf A4. Zu jeder Aufgabe stehen Fach, Lehrkraft, der
+Tag der Aufgabe und das Datum, an dem sie fällig ist.
+
+Die Liste zeigt bewusst auch Aufgaben, die erst **nach** der angezeigten Woche
+fällig sind – sie wurden ja in dieser Woche aufgegeben und sind jetzt zu
+erledigen. Solche Einträge sind mit *nach dieser Woche* gekennzeichnet, ebenso
+*überfällige* und *heute* fällige.
+
+Anhänge, die eine Lehrkraft an eine Aufgabe gehängt hat, werden erwähnt, lassen
+sich aber nur in WebUntis selbst öffnen.
+
 ## Drucken und als PDF sichern
 
-Der Knopf **Drucken / PDF** öffnet den Druckdialog.
+Der Knopf **Drucken / PDF** öffnet den Druckdialog – gedruckt wird, was gerade
+angezeigt wird, im jeweils passenden Format.
 
 - **macOS:** unten links auf *PDF* → *Als PDF sichern*
 - **Windows:** als Drucker *Microsoft Print to PDF* wählen
 - **Android:** oben als Ziel *Als PDF speichern* wählen
 
-Gedruckt wird eine Wochenübersicht auf A4 quer. Entfallene Stunden stehen
-durchgestrichen und rot.
+Der Stundenplan kommt quer auf A4, die Hausaufgabenliste hochkant. Entfallene
+Stunden stehen durchgestrichen und rot.
 
 ---
 

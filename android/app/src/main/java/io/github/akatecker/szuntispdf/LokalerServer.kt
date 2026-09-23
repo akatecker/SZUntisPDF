@@ -237,6 +237,27 @@ class LokalerServer(private val zusammenhang: Context) {
                 }
             }
 
+            pfad == "/api/hausaufgaben" && verfahren == "GET" -> {
+                val laufend = konto
+                    ?: return sendeJson(strom, 409,
+                        JSONObject().put("fehler", "Kein Konto eingerichtet."))
+                val felder = abfrageFelder(abfrage)
+                val montag = try {
+                    tagAus(felder["montag"].orEmpty())
+                } catch (_: Exception) {
+                    return sendeJson(strom, 400, JSONObject().put("fehler", "Ungültiges Datum."))
+                }
+                try {
+                    val aufgaben = laufend.hausaufgaben(montag)
+                    sendeJson(strom, 200, JSONObject()
+                        .put("name", laufend.anzeigename)
+                        .put("montag", felder["montag"])
+                        .put("aufgaben", JSONArray(aufgaben.map { it.alsJson() })))
+                } catch (fehler: UntisFehler) {
+                    sendeJson(strom, 502, JSONObject().put("fehler", fehler.message))
+                }
+            }
+
             pfad == "/api/konto" && verfahren == "POST" -> {
                 val daten = try { JSONObject(rumpf) } catch (_: Exception) { JSONObject() }
                 val zugang = try {

@@ -91,6 +91,29 @@ data class Termin(
         .put("ausKlassenplan", ausKlassenplan).put("klassenHinweis", klassenHinweis)
 }
 
+/** Eine Hausübung, bereits mit Fach und Lehrkraft aufgelöst. */
+data class Hausaufgabe(
+    val aufgegeben: String,     // "2026-09-23"
+    val faellig: String,
+    val kuerzel: String,
+    val fach: String,
+    val fachExakt: Boolean,
+    val lehrkraft: String,
+    val text: String,
+    val anmerkung: String,
+    val erledigt: Boolean,
+    val anhaenge: Int,
+) {
+    val laeuftLaenger: Boolean get() = faellig > aufgegeben
+
+    fun alsJson(): JSONObject = JSONObject()
+        .put("aufgegeben", aufgegeben).put("faellig", faellig)
+        .put("kuerzel", kuerzel).put("fach", fach).put("fachExakt", fachExakt)
+        .put("lehrkraft", lehrkraft).put("text", text).put("anmerkung", anmerkung)
+        .put("erledigt", erledigt).put("anhaenge", anhaenge)
+        .put("laeuftLaenger", laeuftLaenger)
+}
+
 /**
  * Angemeldete Sitzung für genau ein WebUntis-Konto.
  *
@@ -265,6 +288,90 @@ class UntisKonto(val zugang: Zugang) {
         }
         stammklasseId = zaehler.maxByOrNull { it.value }?.key
         return stammklasseId
+    }
+
+    /**
+     * Hausübungen, die die Woche ab [montag] berühren.
+     *
+     * WebUntis filtert eine Anfrage nach dem **Fälligkeitsdatum**. Eine am
+     * Mittwoch aufgegebene Aufgabe, die erst nächsten Montag fällig ist, fiele
+     * damit aus der Wochenansicht heraus, obwohl sie genau jetzt zu erledigen
+     * ist. Deshalb wird großzügig abgefragt und danach auf Überschneidung
+     * geprüft. ISO-Daten lassen sich dafür als Text vergleichen.
+     */
+    fun hausaufgaben(montag: Calendar): List<Hausaufgabe> {
+        if (benutzerdaten == null) anmelden()
+        val elemId = benutzerdaten?.optInt("elemId") ?: throw UntisFehler("Kein Konto angemeldet.")
+        val elemTyp = benutzerdaten?.optString("elemType").orEmpty().ifBlank { "STUDENT" }
+
+        val sonntag = (montag.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, 6) }
+        val frueh = (montag.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, -30) }
+        val spaet = (sonntag.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, 90) }
+
+        val ergebnis = rpc(
+            "getHomeWork2017",
+            JSONObject()
+                .put("id", elemId).put("type", elemTyp)
+                .put("startDate", alsZahl(frueh)).put("endDate", alsZahl(spaet))
+                .put("auth", auth()),
+        )
+
+        val montagIso = alsIso(montag)
+        val sonntagIso = alsIso(sonntag)
+        val stunden = ergebnis.optJSONObject("lessonsById") ?: JSONObject()
+        val faecher = register("subjects")
+        val lehrkraefte = register("teachers")
+
+        val gefunden = ArrayList<Hausaufgabe>()
+        val liste = ergebnis.optJSONArray("homeWorks") ?: JSONArray()
+        for (i in 0 until liste.length()) {
+            val eintrag = liste.getJSONObject(i)
+            val aufgegeben = eintrag.optString("startDate")
+            val faellig = eintrag.optString("endDate")
+            if (aufgegeben.isEmpty() || faellig.isEmpty()) continue
+            if (aufgegeben > sonntagIso || faellig < montagIso) continue
+
+            val stunde = stunden.optJSONObject(eintrag.optInt("lessonId").toString())
+            val fachEintrag = faecher[stunde?.optInt("subjectId")]
+            val kuerzel = fachEintrag?.optString("name").orEmpty()
+            val (fach, exakt) = if (kuerzel.isNotEmpty()) {
+                Faecher.klartext(kuerzel, fachEintrag?.optString("longName").orEmpty())
+            } else {
+                "ohne Gegenstand" to true
+            }
+
+            val namen = ArrayList<String>()
+            stunde?.optJSONArray("teacherIds")?.let { kennungen ->
+                for (k in 0 until kennungen.length()) {
+                    val person = lehrkraefte[kennungen.getInt(k)]
+                    val name = person?.optString("lastName").orEmpty()
+                        .ifBlank { person?.optString("name").orEmpty() }
+                    if (name.isNotBlank()) namen.add(name)
+                }
+            }
+
+            gefunden.add(
+                Hausaufgabe(
+                    aufgegeben = aufgegeben,
+                    faellig = faellig,
+                    kuerzel = kuerzel,
+                    fach = fach,
+                    fachExakt = exakt,
+                    lehrkraft = namen.distinct().sorted().joinToString(", "),
+                    text = eintrag.optString("text").trim(),
+                    anmerkung = eintrag.optString("remark").takeIf { it != "null" }.orEmpty().trim(),
+                    erledigt = eintrag.optBoolean("completed"),
+                    anhaenge = eintrag.optJSONArray("attachments")?.length() ?: 0,
+                )
+            )
+        }
+        return gefunden.sortedWith(compareBy({ it.faellig }, { it.kuerzel }, { it.text }))
+    }
+
+    private fun alsIso(tag: Calendar): String {
+        val formatierer = SimpleDateFormat("yyyy-MM-dd", Locale.GERMANY)
+        formatierer.timeZone = tag.timeZone
+        return formatierer.format(tag.time)
     }
 
     fun termine(montag: Calendar, modus: Modus): List<Termin> {

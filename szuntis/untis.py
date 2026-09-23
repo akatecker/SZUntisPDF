@@ -132,6 +132,27 @@ class Termin:
         return self.quelle is Quelle.KLASSE
 
 
+@dataclasses.dataclass(slots=True)
+class Hausaufgabe:
+    """Eine Hausübung, bereits mit Fach und Lehrkraft aufgelöst."""
+
+    aufgegeben: dt.date
+    faellig: dt.date
+    kuerzel: str
+    fach: str
+    fach_exakt: bool
+    lehrkraft: str
+    text: str
+    anmerkung: str
+    erledigt: bool
+    anhaenge: int
+
+    @property
+    def laeuft_laenger(self) -> bool:
+        """Erstreckt sich über mehr als einen Tag."""
+        return self.faellig > self.aufgegeben
+
+
 def _totp(schluessel: str, zeitpunkt: float | None = None) -> int:
     """RFC-6238-Einmalcode (SHA-1, 30 s, 6 Stellen) aus dem Base32-Schlüssel."""
     roh = schluessel.upper().replace(" ", "")
@@ -267,6 +288,72 @@ class UntisKonto:
                         zaehler[element["id"]] += 1
         self._stammklasse = zaehler.most_common(1)[0][0] if zaehler else None
         return self._stammklasse
+
+    def hausaufgaben(self, montag: dt.date) -> list[Hausaufgabe]:
+        """Hausübungen, die die Woche ab ``montag`` berühren.
+
+        WebUntis filtert eine Anfrage nach dem **Fälligkeitsdatum**. Eine am
+        Mittwoch aufgegebene Aufgabe, die erst nächsten Montag fällig ist,
+        fiele damit aus der Wochenansicht heraus, obwohl sie genau jetzt zu
+        erledigen ist. Deshalb wird großzügig abgefragt und anschließend auf
+        Überschneidung mit der Woche geprüft.
+        """
+        if self._benutzer is None or self._stammdaten is None:
+            self.anmelden()
+        assert self._benutzer is not None and self._stammdaten is not None
+
+        sonntag = montag + dt.timedelta(days=6)
+        ergebnis = self._rpc(
+            "getHomeWork2017",
+            {
+                "id": self._benutzer["elemId"],
+                "type": self._benutzer.get("elemType", "STUDENT"),
+                "startDate": int((montag - dt.timedelta(days=30)).strftime("%Y%m%d")),
+                "endDate": int((sonntag + dt.timedelta(days=90)).strftime("%Y%m%d")),
+                "auth": self._auth(),
+            },
+        )
+
+        stunden = ergebnis.get("lessonsById", {}) or {}
+        faecher = self._register("subjects")
+        lehrkraefte = self._register("teachers")
+
+        gefunden: list[Hausaufgabe] = []
+        for eintrag in ergebnis.get("homeWorks", []) or []:
+            try:
+                aufgegeben = dt.date.fromisoformat(eintrag["startDate"])
+                faellig = dt.date.fromisoformat(eintrag["endDate"])
+            except (KeyError, ValueError):
+                continue
+            if aufgegeben > sonntag or faellig < montag:
+                continue  # berührt diese Woche nicht
+
+            stunde = stunden.get(str(eintrag.get("lessonId"))) or {}
+            fach_eintrag = faecher.get(stunde.get("subjectId")) or {}
+            kuerzel = fach_eintrag.get("name", "")
+            fach, exakt = subjects.klartext(kuerzel, fach_eintrag.get("longName", ""))
+
+            namen = []
+            for kennung in stunde.get("teacherIds", []):
+                person = lehrkraefte.get(kennung) or {}
+                if wert := (person.get("lastName") or person.get("name")):
+                    namen.append(wert)
+
+            gefunden.append(Hausaufgabe(
+                aufgegeben=aufgegeben,
+                faellig=faellig,
+                kuerzel=kuerzel,
+                fach=fach if kuerzel else "ohne Gegenstand",
+                fach_exakt=exakt if kuerzel else True,
+                lehrkraft=", ".join(sorted(dict.fromkeys(namen))),
+                text=(eintrag.get("text") or "").strip(),
+                anmerkung=(eintrag.get("remark") or "").strip(),
+                erledigt=bool(eintrag.get("completed")),
+                anhaenge=len(eintrag.get("attachments") or []),
+            ))
+
+        gefunden.sort(key=lambda h: (h.faellig, h.kuerzel, h.text))
+        return gefunden
 
     def termine(
         self,
