@@ -3,6 +3,27 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+/**
+ * Versionsnummer aus dem Git-Tag, sonst aus SZUNTIS_VERSION.
+ *
+ * Fest eingetragen wurde sie schon einmal vergessen: Das 1.3.0-Release trug
+ * im macOS-Bündel noch 1.2.0.
+ */
+val fassung: String = (System.getenv("SZUNTIS_VERSION")?.removePrefix("v")?.takeIf { it.isNotBlank() }
+    ?: runCatching {
+        val vorgang = ProcessBuilder("git", "describe", "--tags", "--abbrev=0")
+            .directory(rootDir).redirectErrorStream(true).start()
+        vorgang.inputStream.bufferedReader().readText().trim().removePrefix("v")
+    }.getOrDefault(""))
+    .split(".").filter { it.toIntOrNull() != null }.joinToString(".")
+    .ifBlank { "0.0.0" }
+
+/** Aus 1.3.0 wird 10300 - monoton steigend, wie Android es verlangt. */
+val fassungsNummer: Int = fassung.split(".").map { it.toIntOrNull() ?: 0 }
+    .let { (it + listOf(0, 0, 0)).take(3) }
+    .let { (gross, mittel, klein) -> gross * 10000 + mittel * 100 + klein }
+    .coerceAtLeast(1)
+
 android {
     namespace = "io.github.akatecker.szuntispdf"
     compileSdk = 35
@@ -11,8 +32,8 @@ android {
         applicationId = "io.github.akatecker.szuntispdf"
         minSdk = 24            // Android 7, deckt praktisch alle Geraete ab
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = fassungsNummer
+        versionName = fassung
     }
 
     // Liegt ein eigener Schluessel bereit, wird damit signiert - nur so behalten

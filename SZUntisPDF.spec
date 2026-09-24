@@ -12,6 +12,31 @@ from pathlib import Path
 
 WURZEL = Path(SPECPATH)
 
+def fassung() -> str:
+    """Versionsnummer aus dem Git-Tag, sonst aus der Umgebung.
+
+    Fest eingetragen wurde sie schon einmal vergessen: Das 1.3.0-Release trug
+    im Buendel noch 1.2.0.
+    """
+    import os
+    import subprocess
+
+    if wert := os.environ.get("SZUNTIS_VERSION"):
+        return wert.lstrip("v")
+    try:
+        roh = subprocess.run(
+            ["git", "describe", "--tags", "--abbrev=0"],
+            cwd=SPECPATH, capture_output=True, text=True, timeout=10,
+        ).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        roh = ""
+    # CFBundleVersion vertraegt nur Ziffern und Punkte.
+    ziffern = ".".join(t for t in roh.lstrip("v").split(".") if t.isdigit())
+    return ziffern or "0.0.0"
+
+
+VERSION = fassung()
+
 symbol = None
 for kandidat in (("icon.icns" if sys.platform == "darwin" else "icon.ico"),):
     pfad = WURZEL / "assets" / kandidat
@@ -63,8 +88,8 @@ if sys.platform == "darwin":
         info_plist={
             "CFBundleName": "SZUntisPDF",
             "CFBundleDisplayName": "SZUntisPDF",
-            "CFBundleShortVersionString": "1.2.0",
-            "CFBundleVersion": "1.2.0",
+            "CFBundleShortVersionString": VERSION,
+            "CFBundleVersion": VERSION,
             "NSHighResolutionCapable": True,
             "LSApplicationCategoryType": "public.app-category.education",
             # Kein Fenster von uns selbst - die Oberflaeche laeuft im Browser.
